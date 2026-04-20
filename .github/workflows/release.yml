@@ -45,7 +45,7 @@ jobs:
           cache: pnpm
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
         with:
           toolchain: stable
 
@@ -63,14 +63,21 @@ jobs:
         shell: pwsh
         run: New-Item -ItemType Directory -Force -Path release-artifacts | Out-Null
 
-      - name: Archive Windows executable
-        if: runner.os == 'Windows'
+      - name: Archive built app
         shell: pwsh
-        run: 7z a "release-artifacts/ChromTool-${{ github.ref_name }}-${{ matrix.archive_suffix }}.7z" "${{ matrix.built_app_path }}"
+        run: |
+          $archivePath = Join-Path $PWD "release-artifacts/ChromTool-${{ github.ref_name }}-${{ matrix.archive_suffix }}.7z"
+          $sourcePath = Join-Path $PWD "${{ matrix.built_app_path }}"
+          $sourceDir = Split-Path -Path $sourcePath -Parent
+          $sourceName = Split-Path -Path $sourcePath -Leaf
 
-      - name: Archive macOS app bundle
-        if: runner.os == 'macOS'
-        run: 7z a "release-artifacts/ChromTool-${{ github.ref_name }}-${{ matrix.archive_suffix }}.7z" "${{ matrix.built_app_path }}"
+          Push-Location $sourceDir
+          try {
+            7z a $archivePath $sourceName
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
