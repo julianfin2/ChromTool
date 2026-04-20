@@ -1,0 +1,99 @@
+name: Chrom Tool Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            bundle_target: msi
+            archive_name: ChromTool-windows-x64.7z
+            built_app_path: src-tauri/target/release/ChromTool.exe
+          - os: macos-latest
+            bundle_target: app
+            archive_name: ChromTool-macos.7z
+            built_app_path: src-tauri/target/release/bundle/macos/ChromTool.app
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install 7-Zip on macOS
+        if: runner.os == 'macOS'
+        run: brew install p7zip
+
+      - name: Build Tauri app
+        run: pnpm tauri build --bundles ${{ matrix.bundle_target }}
+
+      - name: Create archive directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path release-artifacts | Out-Null
+
+      - name: Archive Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: 7z a "release-artifacts/${{ matrix.archive_name }}" "${{ matrix.built_app_path }}"
+
+      - name: Archive macOS app bundle
+        if: runner.os == 'macOS'
+        run: 7z a "release-artifacts/${{ matrix.archive_name }}" "${{ matrix.built_app_path }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release-artifacts/${{ matrix.archive_name }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive_name }}
+          path: release-artifacts/${{ matrix.archive_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
