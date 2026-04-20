@@ -1,0 +1,146 @@
+<script setup lang="ts">
+import { computed } from "vue";
+
+import type { RemoveBookmarkResult } from "../../types/browser";
+
+const props = defineProps<{
+  mode: "confirm" | "result";
+  title: string;
+  bookmarkCount: number;
+  profileCount: number;
+  results: RemoveBookmarkResult[];
+  busy?: boolean;
+  generalError?: string;
+}>();
+
+const emit = defineEmits<{
+  close: [];
+  confirm: [];
+}>();
+
+const resultSummary = computed(() => {
+  const statusByUrl = new Map<string, boolean>();
+
+  for (const result of props.results) {
+    const previous = statusByUrl.get(result.url);
+    const succeeded = !result.error;
+
+    if (previous === undefined) {
+      statusByUrl.set(result.url, succeeded);
+      continue;
+    }
+
+    statusByUrl.set(result.url, previous && succeeded);
+  }
+
+  let successCount = 0;
+  let failedCount = 0;
+  for (const succeeded of statusByUrl.values()) {
+    if (succeeded) {
+      successCount += 1;
+    } else {
+      failedCount += 1;
+    }
+  }
+
+  return { successCount, failedCount };
+});
+</script>
+
+<template>
+  <div class="modal-backdrop" @click.self="emit('close')">
+    <section class="modal-card">
+      <div class="modal-header">
+        <h3>{{ title }}</h3>
+        <button class="secondary-button" type="button" @click="emit('close')">关闭</button>
+      </div>
+
+      <template v-if="mode === 'confirm'">
+        <p class="modal-copy">
+          将从 {{ profileCount }} 个资料中删除 {{ bookmarkCount }} 个书签。
+        </p>
+
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" @click="emit('close')">取消</button>
+          <button class="danger-button" type="button" :disabled="busy" @click="emit('confirm')">
+            {{ busy ? "删除中..." : "确认删除" }}
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+        <p v-if="generalError" class="result-banner error">{{ generalError }}</p>
+        <p class="modal-copy">
+          成功删除 {{ resultSummary.successCount }} 个书签，失败 {{ resultSummary.failedCount }} 个。
+        </p>
+
+        <div class="modal-actions">
+          <button class="primary-button" type="button" @click="emit('close')">关闭</button>
+        </div>
+      </template>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.26);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: min(560px, 100%);
+  max-height: min(72vh, 820px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-header h3,
+.modal-copy {
+  margin: 0;
+}
+
+.modal-copy {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.result-banner {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+}
+
+.result-banner.error {
+  background: rgba(254, 242, 242, 0.96);
+  color: #b42318;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+</style>

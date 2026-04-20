@@ -1,0 +1,58 @@
+:root {
+  color: #15202b;
+  background:
+    radial-gradient(circle at top left, rgba(108, 145, 255, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 24%),
+    linear-gradient(180deg, #f5f8fc 0%, #edf2f7 100%);
+  font-family:
+    "Segoe UI Variable Text",
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --panel: rgba(255, 255, 255, 0.76);
+  --panel-strong: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(148, 163, 184, 0.18);
+  --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  --text: #0f172a;
+  --muted: #526277;
+  --muted-soft: #7b8aa2;
+  --badge-bg: rgba(226, 232, 240, 0.7);
+  --badge-text: #344256;
+  --accent: #2f6fed;
+  --accent-soft: rgba(47, 111, 237, 0.12);
+  --chrome: #2563eb;
+  --edge: #0891b2;
+  --brave: #ea580c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
