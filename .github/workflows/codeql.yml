@@ -51,17 +51,13 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.language == 'rust' && 'manual' || 'none' }}
+          build-mode: none
 
       - name: Setup Rust
         if: matrix.language == 'rust'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-
-      - name: Build Rust backend
-        if: matrix.language == 'rust'
-        run: cargo build --manifest-path src-tauri/Cargo.toml
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
