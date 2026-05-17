@@ -391,7 +391,6 @@ const emit = defineEmits<{
   border: 1px solid var(--panel-border);
   border-radius: 22px;
   background: var(--panel);
-  box-shadow: var(--shadow);
 }
 
 .section-tabs::-webkit-scrollbar {
@@ -441,7 +440,6 @@ const emit = defineEmits<{
 .section-tab.active {
   color: var(--text);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(232, 240, 255, 0.92));
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 }
 
 .content-scroll-area {

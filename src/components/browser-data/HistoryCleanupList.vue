@@ -274,7 +274,6 @@ function cleanupItems(profile: ProfileSummary) {
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 22px;
   background: var(--panel);
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
