@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { PasswordSiteSortKey, PasswordSiteSummary } from "../../types/browser";
+import type { PasswordSiteSortKey, PasswordSiteSummary, SortDirection } from "../../types/browser";
 
-defineProps<{
+const props = defineProps<{
   passwordSites: PasswordSiteSummary[];
   sortKey: PasswordSiteSortKey;
+  sortDirection: SortDirection;
   loaded: boolean;
   loading: boolean;
   error: string;
@@ -14,6 +15,11 @@ const emit = defineEmits<{
   showProfiles: [url: string];
   load: [];
 }>();
+
+function sortIndicator(sortKey: PasswordSiteSortKey) {
+  if (props.sortKey !== sortKey) return "↕";
+  return props.sortDirection === "asc" ? "↑" : "↓";
+}
 </script>
 
 <template>
@@ -32,8 +38,14 @@ const emit = defineEmits<{
 
     <div v-if="passwordSites.length" class="data-table">
       <div class="data-table-header passwords-grid">
-        <button class="header-cell sortable" :class="{ active: sortKey === 'domain' }" type="button" @click="emit('update:sortKey', 'domain')">域名</button>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'url' }" type="button" @click="emit('update:sortKey', 'url')">URL</button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'domain' }" type="button" @click="emit('update:sortKey', 'domain')">
+          <span>域名</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'domain' }">{{ sortIndicator("domain") }}</span>
+        </button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'url' }" type="button" @click="emit('update:sortKey', 'url')">
+          <span>URL</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'url' }">{{ sortIndicator("url") }}</span>
+        </button>
         <div class="header-cell actions-cell">关联资料</div>
       </div>
       <div class="data-table-body styled-scrollbar">
@@ -159,6 +171,9 @@ const emit = defineEmits<{
 }
 
 .header-cell.sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
   text-align: left;
   background: transparent;
@@ -167,6 +182,16 @@ const emit = defineEmits<{
 
 .header-cell.sortable.active {
   color: var(--text);
+}
+
+.sort-indicator {
+  color: rgba(100, 116, 139, 0.42);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.sort-indicator.active {
+  color: var(--accent);
 }
 
 .data-table-row {

@@ -7,6 +7,7 @@ import type {
   BookmarkSummary,
   FilterMode,
   FilterRule,
+  SortDirection,
 } from "../../types/browser";
 import FilterRules from "./FilterRules.vue";
 
@@ -14,6 +15,7 @@ const props = defineProps<{
   bookmarks: BookmarkSummary[];
   totalCount: number;
   sortKey: BookmarkSortKey;
+  sortDirection: SortDirection;
   filterMode: FilterMode;
   filterRules: FilterRule<BookmarkFilterField>[];
   selectedBookmarkUrls: string[];
@@ -43,6 +45,11 @@ const activeFilterCount = computed(
 
 function isSelected(url: string) {
   return props.selectedBookmarkUrls.includes(url);
+}
+
+function sortIndicator(sortKey: BookmarkSortKey) {
+  if (props.sortKey !== sortKey) return "↕";
+  return props.sortDirection === "asc" ? "↑" : "↓";
 }
 
 const bookmarkFilterFields: { value: BookmarkFilterField; label: string }[] = [
@@ -93,8 +100,14 @@ const bookmarkFilterFields: { value: BookmarkFilterField; label: string }[] = [
 
       <div class="data-table-header bookmarks-grid">
         <div class="header-cell checkbox-cell">选择</div>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'title' }" type="button" @click="emit('update:sortKey', 'title')">名称</button>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'url' }" type="button" @click="emit('update:sortKey', 'url')">URL</button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'title' }" type="button" @click="emit('update:sortKey', 'title')">
+          <span>名称</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'title' }">{{ sortIndicator("title") }}</span>
+        </button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'url' }" type="button" @click="emit('update:sortKey', 'url')">
+          <span>URL</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'url' }">{{ sortIndicator("url") }}</span>
+        </button>
         <div class="header-cell actions-cell">操作</div>
       </div>
       <div class="data-table-body styled-scrollbar">
@@ -244,6 +257,9 @@ const bookmarkFilterFields: { value: BookmarkFilterField; label: string }[] = [
 }
 
 .header-cell.sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
   text-align: left;
   background: transparent;
@@ -252,6 +268,16 @@ const bookmarkFilterFields: { value: BookmarkFilterField; label: string }[] = [
 
 .header-cell.sortable.active {
   color: var(--text);
+}
+
+.sort-indicator {
+  color: rgba(100, 116, 139, 0.42);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.sort-indicator.active {
+  color: var(--accent);
 }
 
 .toolbar-checkbox {

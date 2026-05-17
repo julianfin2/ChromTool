@@ -10,6 +10,7 @@ const appVersion = __APP_VERSION__;
 const {
   activeSection,
   associatedProfilesModal,
+  bookmarkSortDirection,
   bookmarkSortKey,
   bookmarkDeleteBusy,
   bookmarkModalSelectedProfileIds,
@@ -59,6 +60,7 @@ const {
   extensionRemovalResultOpen,
   extensionRemovalResults,
   extensionSelectedIds,
+  extensionSortDirection,
   extensionSortKey,
   historyCleanupBusy,
   historyCleanupConfirmProfiles,
@@ -74,12 +76,18 @@ const {
   page,
   pickExecutablePath,
   pickUserDataPath,
+  passwordSiteSortDirection,
   passwordSiteSortKey,
   passwordSitesError,
   passwordSitesLoading,
   profileSelectedIds,
+  profileSortDirection,
   profileSortKey,
   refreshCurrentBrowser,
+  requestBookmarkSort,
+  requestExtensionSort,
+  requestPasswordSiteSort,
+  requestProfileSort,
   savingConfig,
   sectionCount,
   selectedBrowserId,
@@ -242,9 +250,13 @@ async function refreshCurrentBrowserPreservingScroll() {
         :current-browser="currentBrowser"
         :active-section="activeSection"
         :profile-sort-key="profileSortKey"
+        :profile-sort-direction="profileSortDirection"
         :extension-sort-key="extensionSortKey"
+        :extension-sort-direction="extensionSortDirection"
         :bookmark-sort-key="bookmarkSortKey"
+        :bookmark-sort-direction="bookmarkSortDirection"
         :password-site-sort-key="passwordSiteSortKey"
+        :password-site-sort-direction="passwordSiteSortDirection"
         :password-sites-loaded="hasLoadedPasswordSites(currentBrowser.browserId)"
         :password-sites-loading="passwordSitesLoading"
         :password-sites-error="passwordSitesError"
@@ -286,10 +298,10 @@ async function refreshCurrentBrowserPreservingScroll() {
         :extension-monogram="extensionMonogram"
         :associated-profiles-modal="associatedProfilesModal"
         @update:active-section="selectBrowserSection"
-        @update:profile-sort-key="profileSortKey = $event"
-        @update:extension-sort-key="extensionSortKey = $event"
-        @update:bookmark-sort-key="bookmarkSortKey = $event"
-        @update:password-site-sort-key="passwordSiteSortKey = $event"
+        @update:profile-sort-key="requestProfileSort"
+        @update:extension-sort-key="requestExtensionSort"
+        @update:bookmark-sort-key="requestBookmarkSort"
+        @update:password-site-sort-key="requestPasswordSiteSort"
         @update:extension-filter-mode="extensionFilterMode = $event"
         @update:extension-filter-rules="extensionFilterRules = $event"
         @update:bookmark-filter-mode="bookmarkFilterMode = $event"

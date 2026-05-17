@@ -11,6 +11,7 @@ import type {
   ExtensionAssociatedProfileSummary,
   ProfileSortKey,
   ProfileSummary,
+  SortDirection,
 } from "../types/browser";
 
 export function compareText(left: string, right: string) {
@@ -20,7 +21,19 @@ export function compareText(left: string, right: string) {
   });
 }
 
-function compareOptionalText(left: string | null | undefined, right: string | null | undefined) {
+function directionMultiplier(direction: SortDirection) {
+  return direction === "asc" ? 1 : -1;
+}
+
+function applyDirection(result: number, direction: SortDirection) {
+  return result * directionMultiplier(direction);
+}
+
+function compareOptionalText(
+  left: string | null | undefined,
+  right: string | null | undefined,
+  direction: SortDirection,
+) {
   const leftValue = left?.trim() ?? "";
   const rightValue = right?.trim() ?? "";
 
@@ -31,7 +44,7 @@ function compareOptionalText(left: string | null | undefined, right: string | nu
   if (leftEmpty) return 1;
   if (rightEmpty) return -1;
 
-  return compareText(leftValue, rightValue);
+  return applyDirection(compareText(leftValue, rightValue), direction);
 }
 
 export function compareProfileId(left: string, right: string) {
@@ -42,50 +55,66 @@ export function compareProfileId(left: string, right: string) {
   return compareText(leftKey.text, rightKey.text);
 }
 
-export function sortProfiles(items: ProfileSummary[], sortKey: ProfileSortKey) {
+export function sortProfiles(
+  items: ProfileSummary[],
+  sortKey: ProfileSortKey,
+  direction: SortDirection,
+) {
   const profiles = [...items];
   return profiles.sort((left, right) => {
     if (sortKey === "email") {
       return (
-        compareOptionalText(left.email, right.email) ||
+        compareOptionalText(left.email, right.email, direction) ||
         compareText(left.name, right.name) ||
         compareProfileId(left.id, right.id)
       );
     }
     if (sortKey === "id") {
-      return compareProfileId(left.id, right.id);
+      return applyDirection(compareProfileId(left.id, right.id), direction);
     }
-    return compareText(left.name, right.name) || compareProfileId(left.id, right.id);
+    return applyDirection(compareText(left.name, right.name), direction) || compareProfileId(left.id, right.id);
   });
 }
 
-export function sortExtensions(items: ExtensionSummary[], sortKey: ExtensionSortKey) {
+export function sortExtensions(
+  items: ExtensionSummary[],
+  sortKey: ExtensionSortKey,
+  direction: SortDirection,
+) {
   const extensions = [...items];
   return extensions.sort((left, right) => {
     if (sortKey === "id") {
-      return compareText(left.id, right.id);
+      return applyDirection(compareText(left.id, right.id), direction);
     }
-    return compareText(left.name, right.name) || compareText(left.id, right.id);
+    return applyDirection(compareText(left.name, right.name), direction) || compareText(left.id, right.id);
   });
 }
 
-export function sortBookmarks(items: BookmarkSummary[], sortKey: BookmarkSortKey) {
+export function sortBookmarks(
+  items: BookmarkSummary[],
+  sortKey: BookmarkSortKey,
+  direction: SortDirection,
+) {
   const bookmarks = [...items];
   return bookmarks.sort((left, right) => {
     if (sortKey === "url") {
-      return compareOptionalText(left.url, right.url) || compareText(left.title, right.title);
+      return compareOptionalText(left.url, right.url, direction) || compareText(left.title, right.title);
     }
-    return compareOptionalText(left.title, right.title) || compareText(left.url, right.url);
+    return compareOptionalText(left.title, right.title, direction) || compareText(left.url, right.url);
   });
 }
 
-export function sortPasswordSites(items: PasswordSiteSummary[], sortKey: PasswordSiteSortKey) {
+export function sortPasswordSites(
+  items: PasswordSiteSummary[],
+  sortKey: PasswordSiteSortKey,
+  direction: SortDirection,
+) {
   const passwordSites = [...items];
   return passwordSites.sort((left, right) => {
     if (sortKey === "url") {
-      return compareOptionalText(left.url, right.url) || compareText(left.domain, right.domain);
+      return compareOptionalText(left.url, right.url, direction) || compareText(left.domain, right.domain);
     }
-    return compareOptionalText(left.domain, right.domain) || compareText(left.url, right.url);
+    return compareOptionalText(left.domain, right.domain, direction) || compareText(left.url, right.url);
   });
 }
 

@@ -32,6 +32,7 @@ import type {
   RemoveExtensionsResponse,
   PasswordSitesResponse,
   ScanResponse,
+  SortDirection,
 } from "../types/browser";
 
 export function useBrowserManager() {
@@ -70,13 +71,17 @@ export function useBrowserManager() {
     bookmarkUrl?: string;
   } | null>(null);
   const profileSortKey = ref<ProfileSortKey>("name");
+  const profileSortDirection = ref<SortDirection>("asc");
   const extensionSortKey = ref<ExtensionSortKey>("name");
+  const extensionSortDirection = ref<SortDirection>("asc");
   const extensionFilterMode = ref<FilterMode>("and");
   const extensionFilterRules = ref<FilterRule<ExtensionFilterField>[]>([]);
   const bookmarkSortKey = ref<BookmarkSortKey>("title");
+  const bookmarkSortDirection = ref<SortDirection>("asc");
   const bookmarkFilterMode = ref<FilterMode>("and");
   const bookmarkFilterRules = ref<FilterRule<BookmarkFilterField>[]>([]);
   const passwordSiteSortKey = ref<PasswordSiteSortKey>("domain");
+  const passwordSiteSortDirection = ref<SortDirection>("asc");
   const passwordSitesLoading = ref(false);
   const passwordSitesError = ref("");
   const passwordSitesLoadedBrowserIds = ref<string[]>([]);
@@ -167,20 +172,74 @@ export function useBrowserManager() {
   }
 
   const sortedProfiles = computed(() =>
-    sortProfiles(currentBrowser.value?.profiles ?? [], profileSortKey.value),
+    sortProfiles(
+      currentBrowser.value?.profiles ?? [],
+      profileSortKey.value,
+      profileSortDirection.value,
+    ),
   );
   const sortedExtensions = computed(() =>
     sortExtensions(
       filterExtensions(currentBrowser.value?.extensions ?? []),
       extensionSortKey.value,
+      extensionSortDirection.value,
     ),
   );
   const sortedBookmarks = computed(() =>
-    sortBookmarks(filterBookmarks(currentBrowser.value?.bookmarks ?? []), bookmarkSortKey.value),
+    sortBookmarks(
+      filterBookmarks(currentBrowser.value?.bookmarks ?? []),
+      bookmarkSortKey.value,
+      bookmarkSortDirection.value,
+    ),
   );
   const sortedPasswordSites = computed(() =>
-    sortPasswordSites(currentBrowser.value?.passwordSites ?? [], passwordSiteSortKey.value),
+    sortPasswordSites(
+      currentBrowser.value?.passwordSites ?? [],
+      passwordSiteSortKey.value,
+      passwordSiteSortDirection.value,
+    ),
   );
+
+  function nextSortDirection(currentKey: string, requestedKey: string, currentDirection: SortDirection) {
+    if (currentKey !== requestedKey) return "asc";
+    return currentDirection === "asc" ? "desc" : "asc";
+  }
+
+  function requestProfileSort(sortKey: ProfileSortKey) {
+    profileSortDirection.value = nextSortDirection(
+      profileSortKey.value,
+      sortKey,
+      profileSortDirection.value,
+    );
+    profileSortKey.value = sortKey;
+  }
+
+  function requestExtensionSort(sortKey: ExtensionSortKey) {
+    extensionSortDirection.value = nextSortDirection(
+      extensionSortKey.value,
+      sortKey,
+      extensionSortDirection.value,
+    );
+    extensionSortKey.value = sortKey;
+  }
+
+  function requestBookmarkSort(sortKey: BookmarkSortKey) {
+    bookmarkSortDirection.value = nextSortDirection(
+      bookmarkSortKey.value,
+      sortKey,
+      bookmarkSortDirection.value,
+    );
+    bookmarkSortKey.value = sortKey;
+  }
+
+  function requestPasswordSiteSort(sortKey: PasswordSiteSortKey) {
+    passwordSiteSortDirection.value = nextSortDirection(
+      passwordSiteSortKey.value,
+      sortKey,
+      passwordSiteSortDirection.value,
+    );
+    passwordSiteSortKey.value = sortKey;
+  }
 
   watch(
     browsers,
@@ -594,7 +653,11 @@ export function useBrowserManager() {
       const result = await invoke<PasswordSitesResponse>("scan_password_sites", {
         browserId: browser.browserId,
       });
-      browser.passwordSites = sortPasswordSites(result.passwordSites, passwordSiteSortKey.value);
+      browser.passwordSites = sortPasswordSites(
+        result.passwordSites,
+        passwordSiteSortKey.value,
+        passwordSiteSortDirection.value,
+      );
       browser.stats.passwordSiteCount = browser.passwordSites.length;
       if (!passwordSitesLoadedBrowserIds.value.includes(browser.browserId)) {
         passwordSitesLoadedBrowserIds.value = [
@@ -1180,6 +1243,7 @@ export function useBrowserManager() {
   return {
     activeSection,
     associatedProfilesModal,
+    bookmarkSortDirection,
     bookmarkSortKey,
     bookmarkDeleteBusy,
     bookmarkModalSelectedProfileIds,
@@ -1219,6 +1283,7 @@ export function useBrowserManager() {
     extensionRemovalResultOpen,
     extensionRemovalResults,
     extensionSelectedIds,
+    extensionSortDirection,
     extensionSortKey,
     bookmarkFilterMode,
     bookmarkFilterRules,
@@ -1242,13 +1307,19 @@ export function useBrowserManager() {
     page,
     pickExecutablePath,
     pickUserDataPath,
+    passwordSiteSortDirection,
     passwordSiteSortKey,
     passwordSitesError,
     passwordSitesLoading,
     profileSelectedIds,
+    profileSortDirection,
     profileSortKey,
     refreshCurrentBrowser,
     refreshAll,
+    requestBookmarkSort,
+    requestExtensionSort,
+    requestPasswordSiteSort,
+    requestProfileSort,
     savingConfig,
     sectionCount,
     selectedBrowserId,

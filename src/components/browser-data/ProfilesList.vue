@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ProfileSortKey, ProfileSummary } from "../../types/browser";
+import type { ProfileSortKey, ProfileSummary, SortDirection } from "../../types/browser";
 import { profileAvatarSrc } from "../../utils/icons";
 
 const props = defineProps<{
   profiles: ProfileSummary[];
   sortKey: ProfileSortKey;
+  sortDirection: SortDirection;
   openProfileError: string;
   browserId: string;
   browserFamilyId: string | null;
@@ -43,6 +44,11 @@ function visibleEmail(profile: ProfileSummary) {
 function emailTooltip(profile: ProfileSummary) {
   const emails = profileEmails(profile);
   return emails.length ? emails.join("\n") : undefined;
+}
+
+function sortIndicator(sortKey: ProfileSortKey) {
+  if (props.sortKey !== sortKey) return "↕";
+  return props.sortDirection === "asc" ? "↑" : "↓";
 }
 </script>
 
@@ -82,9 +88,18 @@ function emailTooltip(profile: ProfileSummary) {
       <div class="data-table-header profiles-grid">
         <div class="header-cell checkbox-cell">选择</div>
         <div class="header-cell icon-cell">头像</div>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'name' }" type="button" @click="emit('update:sortKey', 'name')">名称</button>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'email' }" type="button" @click="emit('update:sortKey', 'email')">邮箱</button>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'id' }" type="button" @click="emit('update:sortKey', 'id')">资料 ID</button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'name' }" type="button" @click="emit('update:sortKey', 'name')">
+          <span>名称</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'name' }">{{ sortIndicator("name") }}</span>
+        </button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'email' }" type="button" @click="emit('update:sortKey', 'email')">
+          <span>邮箱</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'email' }">{{ sortIndicator("email") }}</span>
+        </button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'id' }" type="button" @click="emit('update:sortKey', 'id')">
+          <span>资料 ID</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'id' }">{{ sortIndicator("id") }}</span>
+        </button>
         <div class="header-cell actions-cell">操作</div>
       </div>
       <div class="data-table-body styled-scrollbar">
@@ -204,6 +219,9 @@ function emailTooltip(profile: ProfileSummary) {
 }
 
 .header-cell.sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
   text-align: left;
   background: transparent;
@@ -212,6 +230,16 @@ function emailTooltip(profile: ProfileSummary) {
 
 .header-cell.sortable.active {
   color: var(--text);
+}
+
+.sort-indicator {
+  color: rgba(100, 116, 139, 0.42);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.sort-indicator.active {
+  color: var(--accent);
 }
 
 .toolbar-checkbox {

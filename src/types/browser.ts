@@ -153,6 +153,7 @@ export type ExtensionSortKey = "name" | "id";
 export type BookmarkSortKey = "title" | "url";
 export type PasswordSiteSortKey = "domain" | "url";
 export type AssociatedProfileSortKey = "id" | "name";
+export type SortDirection = "asc" | "desc";
 export type FilterMode = "and" | "or";
 export type FilterOperator = "contains" | "not_contains" | "equals" | "not_equals";
 export type ExtensionFilterField = "profileName" | "profileId" | "extensionName";

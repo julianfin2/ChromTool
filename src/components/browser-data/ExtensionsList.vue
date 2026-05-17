@@ -6,6 +6,7 @@ import type {
   ExtensionSummary,
   FilterMode,
   FilterRule,
+  SortDirection,
 } from "../../types/browser";
 import FilterRules from "./FilterRules.vue";
 
@@ -13,6 +14,7 @@ const props = defineProps<{
   extensions: ExtensionSummary[];
   totalCount: number;
   sortKey: ExtensionSortKey;
+  sortDirection: SortDirection;
   filterMode: FilterMode;
   filterRules: FilterRule<ExtensionFilterField>[];
   extensionMonogram: (name: string) => string;
@@ -43,6 +45,11 @@ const activeFilterCount = computed(
 
 function isSelected(extensionId: string) {
   return props.selectedExtensionIds.includes(extensionId);
+}
+
+function sortIndicator(sortKey: ExtensionSortKey) {
+  if (props.sortKey !== sortKey) return "↕";
+  return props.sortDirection === "asc" ? "↑" : "↓";
 }
 
 const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = [
@@ -93,8 +100,14 @@ const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = 
       <div class="data-table-header extensions-grid">
         <div class="header-cell checkbox-cell">选择</div>
         <div class="header-cell icon-cell">图标</div>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'name' }" type="button" @click="emit('update:sortKey', 'name')">名称</button>
-        <button class="header-cell sortable" :class="{ active: sortKey === 'id' }" type="button" @click="emit('update:sortKey', 'id')">插件 ID</button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'name' }" type="button" @click="emit('update:sortKey', 'name')">
+          <span>名称</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'name' }">{{ sortIndicator("name") }}</span>
+        </button>
+        <button class="header-cell sortable" :class="{ active: sortKey === 'id' }" type="button" @click="emit('update:sortKey', 'id')">
+          <span>插件 ID</span>
+          <span class="sort-indicator" :class="{ active: sortKey === 'id' }">{{ sortIndicator("id") }}</span>
+        </button>
         <div class="header-cell actions-cell">操作</div>
       </div>
       <div class="data-table-body styled-scrollbar">
@@ -321,6 +334,9 @@ const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = 
 }
 
 .header-cell.sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
   text-align: left;
   background: transparent;
@@ -329,6 +345,16 @@ const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = 
 
 .header-cell.sortable.active {
   color: var(--text);
+}
+
+.sort-indicator {
+  color: rgba(100, 116, 139, 0.42);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.sort-indicator.active {
+  color: var(--accent);
 }
 
 .data-table-row {

@@ -16,6 +16,7 @@ import type {
   PasswordSiteSortKey,
   ProfileSortKey,
   RemoveExtensionResult,
+  SortDirection,
 } from "../../types/browser";
 import AssociatedProfilesModal from "./AssociatedProfilesModal.vue";
 import BookmarkRemovalModal from "./BookmarkRemovalModal.vue";
@@ -31,9 +32,13 @@ defineProps<{
   currentBrowser: BrowserView;
   activeSection: ActiveSection;
   profileSortKey: ProfileSortKey;
+  profileSortDirection: SortDirection;
   extensionSortKey: ExtensionSortKey;
+  extensionSortDirection: SortDirection;
   bookmarkSortKey: BookmarkSortKey;
+  bookmarkSortDirection: SortDirection;
   passwordSiteSortKey: PasswordSiteSortKey;
+  passwordSiteSortDirection: SortDirection;
   passwordSitesLoaded: boolean;
   passwordSitesLoading: boolean;
   passwordSitesError: string;
@@ -193,6 +198,7 @@ const emit = defineEmits<{
       v-if="activeSection === 'profiles'"
       :profiles="sortedProfiles"
       :sort-key="profileSortKey"
+      :sort-direction="profileSortDirection"
       :open-profile-error="openProfileError"
       :browser-id="currentBrowser.browserId"
       :browser-family-id="currentBrowser.browserFamilyId"
@@ -211,6 +217,7 @@ const emit = defineEmits<{
       :extensions="sortedExtensions"
       :total-count="currentBrowser.extensions.length"
       :sort-key="extensionSortKey"
+      :sort-direction="extensionSortDirection"
       :filter-mode="extensionFilterMode"
       :filter-rules="extensionFilterRules"
       :extension-monogram="extensionMonogram"
@@ -231,6 +238,7 @@ const emit = defineEmits<{
       :bookmarks="sortedBookmarks"
       :total-count="currentBrowser.bookmarks.length"
       :sort-key="bookmarkSortKey"
+      :sort-direction="bookmarkSortDirection"
       :filter-mode="bookmarkFilterMode"
       :filter-rules="bookmarkFilterRules"
       :selected-bookmark-urls="bookmarkSelectedUrls"
@@ -249,6 +257,7 @@ const emit = defineEmits<{
       v-else-if="activeSection === 'passwords'"
       :password-sites="sortedPasswordSites"
       :sort-key="passwordSiteSortKey"
+      :sort-direction="passwordSiteSortDirection"
       :loaded="passwordSitesLoaded"
       :loading="passwordSitesLoading"
       :error="passwordSitesError"
