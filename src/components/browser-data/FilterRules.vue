@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="Field extends string">
+import { ref } from "vue";
 import type { FilterMode, FilterOperator, FilterRule } from "../../types/browser";
 
 const props = defineProps<{
@@ -19,7 +20,25 @@ const operators: { value: FilterOperator; label: string }[] = [
   { value: "not_contains", label: "不包含" },
 ];
 
+const openSelectKey = ref("");
 let nextRuleId = 1;
+
+function selectKey(ruleId: string, type: "field" | "operator") {
+  return `${ruleId}:${type}`;
+}
+
+function fieldLabel(value: Field) {
+  return props.fields.find((field) => field.value === value)?.label ?? value;
+}
+
+function operatorLabel(value: FilterOperator) {
+  return operators.find((operator) => operator.value === value)?.label ?? value;
+}
+
+function toggleSelect(ruleId: string, type: "field" | "operator") {
+  const key = selectKey(ruleId, type);
+  openSelectKey.value = openSelectKey.value === key ? "" : key;
+}
 
 function createRule(): FilterRule<Field> {
   return {
@@ -36,6 +55,7 @@ function addRule() {
 }
 
 function updateRule(ruleId: string, patch: Partial<Omit<FilterRule<Field>, "id">>) {
+  openSelectKey.value = "";
   emit(
     "update:rules",
     props.rules.map((rule) => (rule.id === ruleId ? { ...rule, ...patch } : rule)),
@@ -56,7 +76,7 @@ function clearRules() {
 
 <template>
   <div class="modal-backdrop" @click.self="emit('close')">
-    <section class="modal-card">
+    <section class="modal-card" @click="openSelectKey = ''">
       <div class="modal-header">
         <div>
           <h3>{{ title }}</h3>
@@ -85,30 +105,52 @@ function clearRules() {
 
       <div v-if="rules.length" class="filter-rules">
         <div v-for="rule in rules" :key="rule.id" class="filter-rule" :class="{ disabled: rule.disabled }">
-          <select
-            class="filter-select"
-            :value="rule.field"
-            :disabled="rule.disabled"
-            @change="updateRule(rule.id, { field: ($event.target as HTMLSelectElement).value as Field })"
-          >
-            <option v-for="field in fields" :key="field.value" :value="field.value">
-              {{ field.label }}
-            </option>
-          </select>
-          <select
-            class="filter-select operator-select"
-            :value="rule.operator"
-            :disabled="rule.disabled"
-            @change="
-              updateRule(rule.id, {
-                operator: ($event.target as HTMLSelectElement).value as FilterOperator,
-              })
-            "
-          >
-            <option v-for="operator in operators" :key="operator.value" :value="operator.value">
-              {{ operator.label }}
-            </option>
-          </select>
+          <div class="filter-dropdown" @click.stop>
+            <button
+              class="filter-select-button"
+              type="button"
+              :disabled="rule.disabled"
+              @click="toggleSelect(rule.id, 'field')"
+            >
+              <span>{{ fieldLabel(rule.field) }}</span>
+              <span class="select-arrow" aria-hidden="true"></span>
+            </button>
+            <div v-if="openSelectKey === selectKey(rule.id, 'field')" class="select-menu">
+              <button
+                v-for="field in fields"
+                :key="field.value"
+                class="select-option"
+                :class="{ selected: field.value === rule.field }"
+                type="button"
+                @click="updateRule(rule.id, { field: field.value })"
+              >
+                {{ field.label }}
+              </button>
+            </div>
+          </div>
+          <div class="filter-dropdown" @click.stop>
+            <button
+              class="filter-select-button"
+              type="button"
+              :disabled="rule.disabled"
+              @click="toggleSelect(rule.id, 'operator')"
+            >
+              <span>{{ operatorLabel(rule.operator) }}</span>
+              <span class="select-arrow" aria-hidden="true"></span>
+            </button>
+            <div v-if="openSelectKey === selectKey(rule.id, 'operator')" class="select-menu">
+              <button
+                v-for="operator in operators"
+                :key="operator.value"
+                class="select-option"
+                :class="{ selected: operator.value === rule.operator }"
+                type="button"
+                @click="updateRule(rule.id, { operator: operator.value })"
+              >
+                {{ operator.label }}
+              </button>
+            </div>
+          </div>
           <input
             class="filter-input"
             type="text"
@@ -231,12 +273,12 @@ function clearRules() {
   align-items: center;
 }
 
-.filter-rule.disabled .filter-select,
+.filter-rule.disabled .filter-select-button,
 .filter-rule.disabled .filter-input {
   opacity: 0.55;
 }
 
-.filter-select,
+.filter-select-button,
 .filter-input {
   min-width: 0;
   height: 32px;
@@ -247,8 +289,67 @@ function clearRules() {
   font-size: 0.82rem;
 }
 
-.filter-select {
-  padding: 0 8px;
+.filter-dropdown {
+  position: relative;
+  min-width: 0;
+}
+
+.filter-select-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.filter-select-button:disabled {
+  cursor: default;
+}
+
+.select-arrow {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-right: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.select-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 5;
+  width: 100%;
+  min-width: max-content;
+  overflow: hidden;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14);
+}
+
+.select-option {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.select-option:hover,
+.select-option.selected {
+  background: rgba(47, 111, 237, 0.08);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .filter-input {
