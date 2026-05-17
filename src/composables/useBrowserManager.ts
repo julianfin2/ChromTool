@@ -122,8 +122,13 @@ export function useBrowserManager() {
     if (!needle) return true;
 
     const normalizedValues = values.map((item) => item.toLocaleLowerCase());
-    const contains = normalizedValues.some((item) => item.includes(needle));
-    return operator === "contains" ? contains : !contains;
+    if (operator === "contains" || operator === "not_contains") {
+      const contains = normalizedValues.some((item) => item.includes(needle));
+      return operator === "contains" ? contains : !contains;
+    }
+
+    const equals = normalizedValues.some((item) => item === needle);
+    return operator === "equals" ? equals : !equals;
   }
 
   function matchesRules<Field extends string>(

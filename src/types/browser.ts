@@ -154,7 +154,7 @@ export type BookmarkSortKey = "title" | "url";
 export type PasswordSiteSortKey = "domain" | "url";
 export type AssociatedProfileSortKey = "id" | "name";
 export type FilterMode = "and" | "or";
-export type FilterOperator = "contains" | "not_contains";
+export type FilterOperator = "contains" | "not_contains" | "equals" | "not_equals";
 export type ExtensionFilterField = "profileName" | "profileId" | "extensionName";
 export type BookmarkFilterField = "profileName" | "profileId" | "bookmarkTitle" | "url";
 export type FilterRule<Field extends string = string> = {

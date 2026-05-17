@@ -18,6 +18,8 @@ const emit = defineEmits<{
 const operators: { value: FilterOperator; label: string }[] = [
   { value: "contains", label: "包含" },
   { value: "not_contains", label: "不包含" },
+  { value: "equals", label: "等于" },
+  { value: "not_equals", label: "不等于" },
 ];
 
 const openSelectKey = ref("");
