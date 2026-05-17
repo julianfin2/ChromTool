@@ -27,6 +27,7 @@ function createRule(): FilterRule<Field> {
     field: props.fields[0].value,
     operator: "contains",
     value: "",
+    disabled: false,
   };
 }
 
@@ -83,10 +84,11 @@ function clearRules() {
       </div>
 
       <div v-if="rules.length" class="filter-rules">
-        <div v-for="rule in rules" :key="rule.id" class="filter-rule">
+        <div v-for="rule in rules" :key="rule.id" class="filter-rule" :class="{ disabled: rule.disabled }">
           <select
             class="filter-select"
             :value="rule.field"
+            :disabled="rule.disabled"
             @change="updateRule(rule.id, { field: ($event.target as HTMLSelectElement).value as Field })"
           >
             <option v-for="field in fields" :key="field.value" :value="field.value">
@@ -96,6 +98,7 @@ function clearRules() {
           <select
             class="filter-select operator-select"
             :value="rule.operator"
+            :disabled="rule.disabled"
             @change="
               updateRule(rule.id, {
                 operator: ($event.target as HTMLSelectElement).value as FilterOperator,
@@ -110,9 +113,19 @@ function clearRules() {
             class="filter-input"
             type="text"
             :value="rule.value"
+            :disabled="rule.disabled"
             placeholder="输入关键词"
             @input="updateRule(rule.id, { value: ($event.target as HTMLInputElement).value })"
           />
+          <button
+            class="disable-rule-button"
+            :class="{ active: rule.disabled }"
+            type="button"
+            :title="rule.disabled ? '启用条件' : '禁用条件'"
+            @click="updateRule(rule.id, { disabled: !rule.disabled })"
+          >
+            禁用
+          </button>
           <button class="remove-rule-button" type="button" @click="removeRule(rule.id)">
             移除
           </button>
@@ -213,9 +226,14 @@ function clearRules() {
 
 .filter-rule {
   display: grid;
-  grid-template-columns: minmax(116px, 0.9fr) 92px minmax(160px, 1.4fr) auto;
+  grid-template-columns: minmax(116px, 0.9fr) 92px minmax(160px, 1.4fr) auto auto;
   gap: 8px;
   align-items: center;
+}
+
+.filter-rule.disabled .filter-select,
+.filter-rule.disabled .filter-input {
+  opacity: 0.55;
 }
 
 .filter-select,
@@ -243,6 +261,7 @@ function clearRules() {
 
 .add-rule-button,
 .clear-rule-button,
+.disable-rule-button,
 .remove-rule-button {
   border-radius: 10px;
   font-size: 0.8rem;
@@ -257,12 +276,20 @@ function clearRules() {
 }
 
 .clear-rule-button,
+.disable-rule-button,
 .remove-rule-button {
   padding: 5px 9px;
   background: rgba(241, 245, 249, 0.9);
   color: var(--muted);
 }
 
+.disable-rule-button.active {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b42318;
+  font-weight: 700;
+}
+
+.disable-rule-button,
 .remove-rule-button {
   white-space: nowrap;
 }

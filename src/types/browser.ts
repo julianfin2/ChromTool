@@ -162,6 +162,7 @@ export type FilterRule<Field extends string = string> = {
   field: Field;
   operator: FilterOperator;
   value: string;
+  disabled?: boolean;
 };
 export type ActiveSection = "profiles" | "extensions" | "bookmarks" | "passwords" | "history";
 export type AppPage = "browserData" | "configuration";

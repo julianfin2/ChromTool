@@ -38,7 +38,7 @@ const allSelected = computed(
 );
 const filterOpen = ref(false);
 const activeFilterCount = computed(
-  () => props.filterRules.filter((rule) => rule.value.trim().length > 0).length,
+  () => props.filterRules.filter((rule) => !rule.disabled && rule.value.trim().length > 0).length,
 );
 
 function isSelected(url: string) {

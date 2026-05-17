@@ -114,7 +114,7 @@ export function useBrowserManager() {
   );
 
   function activeRules<Field extends string>(rules: FilterRule<Field>[]) {
-    return rules.filter((rule) => rule.value.trim().length > 0);
+    return rules.filter((rule) => !rule.disabled && rule.value.trim().length > 0);
   }
 
   function fieldMatches(values: string[], operator: FilterRule["operator"], value: string) {
