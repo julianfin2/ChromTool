@@ -8,7 +8,9 @@ import type {
   AppPage,
   AssociatedProfileSummary,
   BookmarkAssociatedProfileSummary,
+  BookmarkFilterField,
   BookmarkSortKey,
+  BookmarkSummary,
   BrowserConfigEntry,
   BrowserConfigListResponse,
   BrowserView,
@@ -16,9 +18,12 @@ import type {
   CleanupHistoryInput,
   CleanupHistoryResponse,
   CreateCustomBrowserConfigInput,
+  ExtensionFilterField,
   ExtensionRemovalRequest,
   ExtensionSummary,
   ExtensionSortKey,
+  FilterMode,
+  FilterRule,
   PasswordSiteSortKey,
   ProfileSortKey,
   RemoveBookmarksInput,
@@ -66,7 +71,11 @@ export function useBrowserManager() {
   } | null>(null);
   const profileSortKey = ref<ProfileSortKey>("name");
   const extensionSortKey = ref<ExtensionSortKey>("name");
+  const extensionFilterMode = ref<FilterMode>("and");
+  const extensionFilterRules = ref<FilterRule<ExtensionFilterField>[]>([]);
   const bookmarkSortKey = ref<BookmarkSortKey>("title");
+  const bookmarkFilterMode = ref<FilterMode>("and");
+  const bookmarkFilterRules = ref<FilterRule<BookmarkFilterField>[]>([]);
   const passwordSiteSortKey = ref<PasswordSiteSortKey>("domain");
   const passwordSitesLoading = ref(false);
   const passwordSitesError = ref("");
@@ -104,14 +113,65 @@ export function useBrowserManager() {
       null,
   );
 
+  function activeRules<Field extends string>(rules: FilterRule<Field>[]) {
+    return rules.filter((rule) => rule.value.trim().length > 0);
+  }
+
+  function fieldMatches(values: string[], operator: FilterRule["operator"], value: string) {
+    const needle = value.trim().toLocaleLowerCase();
+    if (!needle) return true;
+
+    const normalizedValues = values.map((item) => item.toLocaleLowerCase());
+    const contains = normalizedValues.some((item) => item.includes(needle));
+    return operator === "contains" ? contains : !contains;
+  }
+
+  function matchesRules<Field extends string>(
+    rules: FilterRule<Field>[],
+    mode: FilterMode,
+    valuesForField: (field: Field) => string[],
+  ) {
+    const usableRules = activeRules(rules);
+    if (!usableRules.length) return true;
+
+    const matcher = (rule: FilterRule<Field>) =>
+      fieldMatches(valuesForField(rule.field), rule.operator, rule.value);
+
+    return mode === "and" ? usableRules.every(matcher) : usableRules.some(matcher);
+  }
+
+  function filterExtensions(extensions: ExtensionSummary[]) {
+    return extensions.filter((extension) =>
+      matchesRules(extensionFilterRules.value, extensionFilterMode.value, (field) => {
+        if (field === "profileName") return extension.profiles.map((profile) => profile.name);
+        if (field === "profileId") return extension.profileIds;
+        return [extension.name];
+      }),
+    );
+  }
+
+  function filterBookmarks(bookmarks: BookmarkSummary[]) {
+    return bookmarks.filter((bookmark) =>
+      matchesRules(bookmarkFilterRules.value, bookmarkFilterMode.value, (field) => {
+        if (field === "profileName") return bookmark.profiles.map((profile) => profile.name);
+        if (field === "profileId") return bookmark.profileIds;
+        if (field === "bookmarkTitle") return [bookmark.title];
+        return [bookmark.url];
+      }),
+    );
+  }
+
   const sortedProfiles = computed(() =>
     sortProfiles(currentBrowser.value?.profiles ?? [], profileSortKey.value),
   );
   const sortedExtensions = computed(() =>
-    sortExtensions(currentBrowser.value?.extensions ?? [], extensionSortKey.value),
+    sortExtensions(
+      filterExtensions(currentBrowser.value?.extensions ?? []),
+      extensionSortKey.value,
+    ),
   );
   const sortedBookmarks = computed(() =>
-    sortBookmarks(currentBrowser.value?.bookmarks ?? [], bookmarkSortKey.value),
+    sortBookmarks(filterBookmarks(currentBrowser.value?.bookmarks ?? []), bookmarkSortKey.value),
   );
   const sortedPasswordSites = computed(() =>
     sortPasswordSites(currentBrowser.value?.passwordSites ?? [], passwordSiteSortKey.value),
@@ -163,6 +223,16 @@ export function useBrowserManager() {
     historyCleanupConfirmProfileIds.value = [];
     historyCleanupResultOpen.value = false;
     passwordSitesError.value = "";
+  });
+
+  watch(sortedBookmarks, (bookmarks) => {
+    const visibleUrls = new Set(bookmarks.map((bookmark) => bookmark.url));
+    bookmarkSelectedUrls.value = bookmarkSelectedUrls.value.filter((url) => visibleUrls.has(url));
+  });
+
+  watch(sortedExtensions, (extensions) => {
+    const visibleIds = new Set(extensions.map((extension) => extension.id));
+    extensionSelectedIds.value = extensionSelectedIds.value.filter((id) => visibleIds.has(id));
   });
 
   async function loadBrowserConfigs() {
@@ -705,7 +775,7 @@ export function useBrowserManager() {
   }
 
   function toggleAllBookmarks() {
-    const bookmarkUrls = currentBrowser.value?.bookmarks.map((bookmark) => bookmark.url) ?? [];
+    const bookmarkUrls = sortedBookmarks.value.map((bookmark) => bookmark.url);
     const allSelected =
       bookmarkUrls.length > 0 &&
       bookmarkUrls.every((url) => bookmarkSelectedUrls.value.includes(url));
@@ -899,7 +969,7 @@ export function useBrowserManager() {
   }
 
   function toggleAllExtensions() {
-    const extensionIds = currentBrowser.value?.extensions.map((extension) => extension.id) ?? [];
+    const extensionIds = sortedExtensions.value.map((extension) => extension.id);
     const allSelected =
       extensionIds.length > 0 &&
       extensionIds.every((extensionId) => extensionSelectedIds.value.includes(extensionId));
@@ -1135,6 +1205,8 @@ export function useBrowserManager() {
     error,
     extensionMonogram,
     extensionDeleteBusy,
+    extensionFilterMode,
+    extensionFilterRules,
     extensionModalSelectedProfileIds,
     extensionRemovalConfirmExtensions: computed(extensionRemovalConfirmExtensions),
     extensionRemovalConfirmProfiles: computed(extensionRemovalConfirmProfiles),
@@ -1143,6 +1215,8 @@ export function useBrowserManager() {
     extensionRemovalResults,
     extensionSelectedIds,
     extensionSortKey,
+    bookmarkFilterMode,
+    bookmarkFilterRules,
     cleanupHistoryError,
     cleanupHistoryResults,
     cleanupHistorySelectedProfiles,

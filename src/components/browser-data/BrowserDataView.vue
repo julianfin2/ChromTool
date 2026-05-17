@@ -4,8 +4,12 @@ import type {
   AssociatedProfileSummary,
   BookmarkAssociatedProfileSummary,
   BookmarkSortKey,
+  BookmarkFilterField,
   BrowserView,
+  ExtensionFilterField,
   ExtensionSortKey,
+  FilterMode,
+  FilterRule,
   CleanupHistoryResult,
   ExtensionAssociatedProfileSummary,
   RemoveBookmarkResult,
@@ -37,6 +41,10 @@ defineProps<{
   sortedExtensions: BrowserView["extensions"];
   sortedBookmarks: BrowserView["bookmarks"];
   sortedPasswordSites: BrowserView["passwordSites"];
+  extensionFilterMode: FilterMode;
+  extensionFilterRules: FilterRule<ExtensionFilterField>[];
+  bookmarkFilterMode: FilterMode;
+  bookmarkFilterRules: FilterRule<BookmarkFilterField>[];
   profileSelectedIds: string[];
   openingSelectedProfiles: boolean;
   historySelectedProfileIds: string[];
@@ -86,6 +94,10 @@ const emit = defineEmits<{
   "update:extensionSortKey": [value: ExtensionSortKey];
   "update:bookmarkSortKey": [value: BookmarkSortKey];
   "update:passwordSiteSortKey": [value: PasswordSiteSortKey];
+  "update:extensionFilterMode": [value: FilterMode];
+  "update:extensionFilterRules": [value: FilterRule<ExtensionFilterField>[]];
+  "update:bookmarkFilterMode": [value: FilterMode];
+  "update:bookmarkFilterRules": [value: FilterRule<BookmarkFilterField>[]];
   loadPasswordSites: [];
   openProfile: [browserId: string, profileId: string];
   toggleProfileSelection: [profileId: string];
@@ -197,11 +209,16 @@ const emit = defineEmits<{
     <ExtensionsList
       v-else-if="activeSection === 'extensions'"
       :extensions="sortedExtensions"
+      :total-count="currentBrowser.extensions.length"
       :sort-key="extensionSortKey"
+      :filter-mode="extensionFilterMode"
+      :filter-rules="extensionFilterRules"
       :extension-monogram="extensionMonogram"
       :selected-extension-ids="extensionSelectedIds"
       :delete-busy="extensionDeleteBusy"
       @update:sort-key="emit('update:extensionSortKey', $event)"
+      @update:filter-mode="emit('update:extensionFilterMode', $event)"
+      @update:filter-rules="emit('update:extensionFilterRules', $event)"
       @show-profiles="emit('showExtensionProfiles', $event)"
       @toggle-extension="emit('toggleExtensionSelection', $event)"
       @toggle-all-extensions="emit('toggleAllExtensions')"
@@ -212,10 +229,15 @@ const emit = defineEmits<{
     <BookmarksList
       v-else-if="activeSection === 'bookmarks'"
       :bookmarks="sortedBookmarks"
+      :total-count="currentBrowser.bookmarks.length"
       :sort-key="bookmarkSortKey"
+      :filter-mode="bookmarkFilterMode"
+      :filter-rules="bookmarkFilterRules"
       :selected-bookmark-urls="bookmarkSelectedUrls"
       :delete-busy="bookmarkDeleteBusy"
       @update:sort-key="emit('update:bookmarkSortKey', $event)"
+      @update:filter-mode="emit('update:bookmarkFilterMode', $event)"
+      @update:filter-rules="emit('update:bookmarkFilterRules', $event)"
       @show-profiles="emit('showBookmarkProfiles', $event)"
       @toggle-bookmark="emit('toggleBookmarkSelection', $event)"
       @toggle-all-bookmarks="emit('toggleAllBookmarks')"

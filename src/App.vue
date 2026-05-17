@@ -19,6 +19,8 @@ const {
   bookmarkRemovalResultOpen,
   bookmarkRemovalResults,
   bookmarkSelectedUrls,
+  bookmarkFilterMode,
+  bookmarkFilterRules,
   browserConfigs,
   browserMonogram,
   browsers,
@@ -48,6 +50,8 @@ const {
   error,
   extensionMonogram,
   extensionDeleteBusy,
+  extensionFilterMode,
+  extensionFilterRules,
   extensionModalSelectedProfileIds,
   extensionRemovalConfirmExtensions,
   extensionRemovalConfirmProfiles,
@@ -248,6 +252,10 @@ async function refreshCurrentBrowserPreservingScroll() {
         :sorted-extensions="sortedExtensions"
         :sorted-bookmarks="sortedBookmarks"
         :sorted-password-sites="sortedPasswordSites"
+        :extension-filter-mode="extensionFilterMode"
+        :extension-filter-rules="extensionFilterRules"
+        :bookmark-filter-mode="bookmarkFilterMode"
+        :bookmark-filter-rules="bookmarkFilterRules"
         :profile-selected-ids="profileSelectedIds"
         :opening-selected-profiles="openingSelectedProfiles"
         :history-selected-profile-ids="cleanupHistorySelectedProfiles"
@@ -282,6 +290,10 @@ async function refreshCurrentBrowserPreservingScroll() {
         @update:extension-sort-key="extensionSortKey = $event"
         @update:bookmark-sort-key="bookmarkSortKey = $event"
         @update:password-site-sort-key="passwordSiteSortKey = $event"
+        @update:extension-filter-mode="extensionFilterMode = $event"
+        @update:extension-filter-rules="extensionFilterRules = $event"
+        @update:bookmark-filter-mode="bookmarkFilterMode = $event"
+        @update:bookmark-filter-rules="bookmarkFilterRules = $event"
         @load-password-sites="loadPasswordSites"
         @open-profile="(browserId, profileId) => openBrowserProfile(browserId, profileId)"
         @toggle-profile-selection="toggleProfileSelection"

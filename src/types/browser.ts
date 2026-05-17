@@ -153,6 +153,16 @@ export type ExtensionSortKey = "name" | "id";
 export type BookmarkSortKey = "title" | "url";
 export type PasswordSiteSortKey = "domain" | "url";
 export type AssociatedProfileSortKey = "id" | "name";
+export type FilterMode = "and" | "or";
+export type FilterOperator = "contains" | "not_contains";
+export type ExtensionFilterField = "profileName" | "profileId" | "extensionName";
+export type BookmarkFilterField = "profileName" | "profileId" | "bookmarkTitle" | "url";
+export type FilterRule<Field extends string = string> = {
+  id: string;
+  field: Field;
+  operator: FilterOperator;
+  value: string;
+};
 export type ActiveSection = "profiles" | "extensions" | "bookmarks" | "passwords" | "history";
 export type AppPage = "browserData" | "configuration";
 export type BrowserConfigSource = "default" | "custom";

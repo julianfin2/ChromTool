@@ -1,0 +1,293 @@
+<script setup lang="ts" generic="Field extends string">
+import type { FilterMode, FilterOperator, FilterRule } from "../../types/browser";
+
+const props = defineProps<{
+  title: string;
+  mode: FilterMode;
+  rules: FilterRule<Field>[];
+  fields: { value: Field; label: string }[];
+}>();
+
+const emit = defineEmits<{
+  "update:mode": [value: FilterMode];
+  "update:rules": [value: FilterRule<Field>[]];
+  close: [];
+}>();
+
+const operators: { value: FilterOperator; label: string }[] = [
+  { value: "contains", label: "包含" },
+  { value: "not_contains", label: "不包含" },
+];
+
+let nextRuleId = 1;
+
+function createRule(): FilterRule<Field> {
+  return {
+    id: `rule-${Date.now()}-${nextRuleId++}`,
+    field: props.fields[0].value,
+    operator: "contains",
+    value: "",
+  };
+}
+
+function addRule() {
+  emit("update:rules", [...props.rules, createRule()]);
+}
+
+function updateRule(ruleId: string, patch: Partial<Omit<FilterRule<Field>, "id">>) {
+  emit(
+    "update:rules",
+    props.rules.map((rule) => (rule.id === ruleId ? { ...rule, ...patch } : rule)),
+  );
+}
+
+function removeRule(ruleId: string) {
+  emit(
+    "update:rules",
+    props.rules.filter((rule) => rule.id !== ruleId),
+  );
+}
+
+function clearRules() {
+  emit("update:rules", []);
+}
+</script>
+
+<template>
+  <div class="modal-backdrop" @click.self="emit('close')">
+    <section class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3>{{ title }}</h3>
+        </div>
+        <button class="secondary-button" type="button" @click="emit('close')">关闭</button>
+      </div>
+
+      <div class="filter-mode">
+        <button
+          class="mode-button"
+          :class="{ active: mode === 'and' }"
+          type="button"
+          @click="emit('update:mode', 'and')"
+        >
+          全部满足
+        </button>
+        <button
+          class="mode-button"
+          :class="{ active: mode === 'or' }"
+          type="button"
+          @click="emit('update:mode', 'or')"
+        >
+          任一满足
+        </button>
+      </div>
+
+      <div v-if="rules.length" class="filter-rules">
+        <div v-for="rule in rules" :key="rule.id" class="filter-rule">
+          <select
+            class="filter-select"
+            :value="rule.field"
+            @change="updateRule(rule.id, { field: ($event.target as HTMLSelectElement).value as Field })"
+          >
+            <option v-for="field in fields" :key="field.value" :value="field.value">
+              {{ field.label }}
+            </option>
+          </select>
+          <select
+            class="filter-select operator-select"
+            :value="rule.operator"
+            @change="
+              updateRule(rule.id, {
+                operator: ($event.target as HTMLSelectElement).value as FilterOperator,
+              })
+            "
+          >
+            <option v-for="operator in operators" :key="operator.value" :value="operator.value">
+              {{ operator.label }}
+            </option>
+          </select>
+          <input
+            class="filter-input"
+            type="text"
+            :value="rule.value"
+            placeholder="输入关键词"
+            @input="updateRule(rule.id, { value: ($event.target as HTMLInputElement).value })"
+          />
+          <button class="remove-rule-button" type="button" @click="removeRule(rule.id)">
+            移除
+          </button>
+        </div>
+      </div>
+      <div v-else class="empty-filter">
+        <p>还没有过滤条件。</p>
+      </div>
+
+      <div class="filter-actions">
+        <button class="add-rule-button" type="button" @click="addRule">添加条件</button>
+        <button
+          v-if="rules.length"
+          class="clear-rule-button"
+          type="button"
+          @click="clearRules"
+        >
+          清空
+        </button>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.26);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: min(680px, 100%);
+  max-height: min(76vh, 820px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
+}
+
+.modal-header,
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modal-header h3,
+.empty-filter p {
+  margin: 0;
+}
+
+.modal-header h3 {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.filter-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.mode-button {
+  padding: 5px 10px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.mode-button.active {
+  background: rgba(47, 111, 237, 0.1);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.filter-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-rule {
+  display: grid;
+  grid-template-columns: minmax(116px, 0.9fr) 92px minmax(160px, 1.4fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-select,
+.filter-input {
+  min-width: 0;
+  height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.filter-select {
+  padding: 0 8px;
+}
+
+.filter-input {
+  padding: 0 10px;
+}
+
+.filter-input::placeholder {
+  color: rgba(100, 116, 139, 0.68);
+}
+
+.add-rule-button,
+.clear-rule-button,
+.remove-rule-button {
+  border-radius: 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.add-rule-button {
+  padding: 6px 10px;
+  background: rgba(47, 111, 237, 0.1);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.clear-rule-button,
+.remove-rule-button {
+  padding: 5px 9px;
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--muted);
+}
+
+.remove-rule-button {
+  white-space: nowrap;
+}
+
+.empty-filter {
+  display: grid;
+  min-height: 96px;
+  place-items: center;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 760px) {
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .filter-rule {
+    grid-template-columns: minmax(0, 1fr) 86px;
+  }
+
+  .filter-input {
+    grid-column: 1 / -1;
+  }
+}
+</style>

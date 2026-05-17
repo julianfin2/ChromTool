@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import type { ExtensionSortKey, ExtensionSummary } from "../../types/browser";
+import { computed, ref } from "vue";
+import type {
+  ExtensionFilterField,
+  ExtensionSortKey,
+  ExtensionSummary,
+  FilterMode,
+  FilterRule,
+} from "../../types/browser";
+import FilterRules from "./FilterRules.vue";
 
 const props = defineProps<{
   extensions: ExtensionSummary[];
+  totalCount: number;
   sortKey: ExtensionSortKey;
+  filterMode: FilterMode;
+  filterRules: FilterRule<ExtensionFilterField>[];
   extensionMonogram: (name: string) => string;
   selectedExtensionIds: string[];
   deleteBusy: boolean;
@@ -12,6 +22,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:sortKey": [value: ExtensionSortKey];
+  "update:filterMode": [value: FilterMode];
+  "update:filterRules": [value: FilterRule<ExtensionFilterField>[]];
   showProfiles: [extensionId: string];
   toggleExtension: [extensionId: string];
   toggleAllExtensions: [];
@@ -24,15 +36,25 @@ const allSelected = computed(
     props.extensions.length > 0 &&
     props.extensions.every((extension) => props.selectedExtensionIds.includes(extension.id)),
 );
+const filterOpen = ref(false);
+const activeFilterCount = computed(
+  () => props.filterRules.filter((rule) => rule.value.trim().length > 0).length,
+);
 
 function isSelected(extensionId: string) {
   return props.selectedExtensionIds.includes(extensionId);
 }
+
+const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = [
+  { value: "profileName", label: "Profile 名称" },
+  { value: "profileId", label: "Profile ID" },
+  { value: "extensionName", label: "插件名称" },
+];
 </script>
 
 <template>
   <section class="table-section">
-    <div v-if="extensions.length" class="data-table">
+    <div v-if="totalCount" class="data-table">
       <div class="extensions-toolbar">
         <label class="toolbar-checkbox" :class="{ disabled: !extensions.length }">
           <input
@@ -49,14 +71,21 @@ function isSelected(extensionId: string) {
           </span>
           <span>全选</span>
         </label>
-        <button
-          class="danger-button toolbar-danger-button"
-          type="button"
-          :disabled="!selectedExtensionIds.length || deleteBusy"
-          @click="emit('deleteSelected')"
-        >
-          {{ deleteBusy ? "删除中..." : `删除所选（${selectedExtensionIds.length}）` }}
-        </button>
+        <div class="toolbar-actions">
+          <span class="toolbar-count">显示 {{ extensions.length }} / {{ totalCount }}</span>
+          <button class="filter-button" type="button" @click="filterOpen = true">
+            过滤
+            <span v-if="activeFilterCount" class="filter-badge">{{ activeFilterCount }}</span>
+          </button>
+          <button
+            class="danger-button toolbar-danger-button"
+            type="button"
+            :disabled="!selectedExtensionIds.length || deleteBusy"
+            @click="emit('deleteSelected')"
+          >
+            {{ deleteBusy ? "删除中..." : `删除所选（${selectedExtensionIds.length}）` }}
+          </button>
+        </div>
       </div>
 
       <div class="data-table-header extensions-grid">
@@ -67,6 +96,9 @@ function isSelected(extensionId: string) {
         <div class="header-cell actions-cell">操作</div>
       </div>
       <div class="data-table-body styled-scrollbar">
+        <div v-if="!extensions.length" class="filtered-empty">
+          <p>没有符合当前过滤条件的插件。</p>
+        </div>
         <article v-for="extension in extensions" :key="extension.id" class="data-table-row extensions-grid">
           <div class="row-cell checkbox-cell">
             <label class="table-checkbox" :class="{ disabled: deleteBusy }">
@@ -112,6 +144,17 @@ function isSelected(extensionId: string) {
     <div v-else class="empty-card">
       <p>这个浏览器没有扫描到任何插件。</p>
     </div>
+
+    <FilterRules
+      v-if="filterOpen"
+      title="过滤插件"
+      :mode="filterMode"
+      :rules="filterRules"
+      :fields="extensionFilterFields"
+      @update:mode="emit('update:filterMode', $event)"
+      @update:rules="emit('update:filterRules', $event)"
+      @close="filterOpen = false"
+    />
   </section>
 </template>
 
@@ -129,6 +172,18 @@ function isSelected(extensionId: string) {
   gap: 12px;
   padding: 10px 12px 8px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .toolbar-checkbox {
@@ -220,6 +275,15 @@ function isSelected(extensionId: string) {
   min-height: 0;
   overflow: auto;
   scrollbar-gutter: stable;
+}
+
+.filtered-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .extensions-grid {
@@ -358,6 +422,29 @@ function isSelected(extensionId: string) {
   border-radius: 10px;
 }
 
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--badge-text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.filter-badge {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(47, 111, 237, 0.12);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .icon-cell {
   padding-left: 4px;
 }
@@ -372,6 +459,10 @@ function isSelected(extensionId: string) {
   .extensions-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .toolbar-actions {
+    justify-content: space-between;
   }
 
   .extensions-grid {

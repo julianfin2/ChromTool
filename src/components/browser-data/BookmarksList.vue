@@ -1,17 +1,29 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
-import type { BookmarkSortKey, BookmarkSummary } from "../../types/browser";
+import type {
+  BookmarkFilterField,
+  BookmarkSortKey,
+  BookmarkSummary,
+  FilterMode,
+  FilterRule,
+} from "../../types/browser";
+import FilterRules from "./FilterRules.vue";
 
 const props = defineProps<{
   bookmarks: BookmarkSummary[];
+  totalCount: number;
   sortKey: BookmarkSortKey;
+  filterMode: FilterMode;
+  filterRules: FilterRule<BookmarkFilterField>[];
   selectedBookmarkUrls: string[];
   deleteBusy: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:sortKey": [value: BookmarkSortKey];
+  "update:filterMode": [value: FilterMode];
+  "update:filterRules": [value: FilterRule<BookmarkFilterField>[]];
   showProfiles: [url: string];
   toggleBookmark: [url: string];
   toggleAllBookmarks: [];
@@ -24,15 +36,26 @@ const allSelected = computed(
     props.bookmarks.length > 0 &&
     props.bookmarks.every((bookmark) => props.selectedBookmarkUrls.includes(bookmark.url)),
 );
+const filterOpen = ref(false);
+const activeFilterCount = computed(
+  () => props.filterRules.filter((rule) => rule.value.trim().length > 0).length,
+);
 
 function isSelected(url: string) {
   return props.selectedBookmarkUrls.includes(url);
 }
+
+const bookmarkFilterFields: { value: BookmarkFilterField; label: string }[] = [
+  { value: "profileName", label: "Profile 名称" },
+  { value: "profileId", label: "Profile ID" },
+  { value: "bookmarkTitle", label: "书签名称" },
+  { value: "url", label: "URL" },
+];
 </script>
 
 <template>
   <section class="table-section">
-    <div v-if="bookmarks.length" class="data-table">
+    <div v-if="totalCount" class="data-table">
       <div class="bookmarks-toolbar">
         <label class="toolbar-checkbox" :class="{ disabled: !bookmarks.length }">
           <input
@@ -49,14 +72,21 @@ function isSelected(url: string) {
           </span>
           <span>全选</span>
         </label>
-        <button
-          class="danger-button toolbar-danger-button"
-          type="button"
-          :disabled="!selectedBookmarkUrls.length || deleteBusy"
-          @click="emit('deleteSelected')"
-        >
-          {{ deleteBusy ? "删除中..." : `删除所选（${selectedBookmarkUrls.length}）` }}
-        </button>
+        <div class="toolbar-actions">
+          <span class="toolbar-count">显示 {{ bookmarks.length }} / {{ totalCount }}</span>
+          <button class="filter-button" type="button" @click="filterOpen = true">
+            过滤
+            <span v-if="activeFilterCount" class="filter-badge">{{ activeFilterCount }}</span>
+          </button>
+          <button
+            class="danger-button toolbar-danger-button"
+            type="button"
+            :disabled="!selectedBookmarkUrls.length || deleteBusy"
+            @click="emit('deleteSelected')"
+          >
+            {{ deleteBusy ? "删除中..." : `删除所选（${selectedBookmarkUrls.length}）` }}
+          </button>
+        </div>
       </div>
 
       <div class="data-table-header bookmarks-grid">
@@ -66,6 +96,9 @@ function isSelected(url: string) {
         <div class="header-cell actions-cell">操作</div>
       </div>
       <div class="data-table-body styled-scrollbar">
+        <div v-if="!bookmarks.length" class="filtered-empty">
+          <p>没有符合当前过滤条件的书签。</p>
+        </div>
         <article v-for="bookmark in bookmarks" :key="bookmark.url" class="data-table-row bookmarks-grid">
           <div class="row-cell checkbox-cell">
             <label class="table-checkbox" :class="{ disabled: deleteBusy }">
@@ -107,6 +140,17 @@ function isSelected(url: string) {
     <div v-else class="empty-card">
       <p>这个浏览器没有扫描到任何书签。</p>
     </div>
+
+    <FilterRules
+      v-if="filterOpen"
+      title="过滤书签"
+      :mode="filterMode"
+      :rules="filterRules"
+      :fields="bookmarkFilterFields"
+      @update:mode="emit('update:filterMode', $event)"
+      @update:rules="emit('update:filterRules', $event)"
+      @close="filterOpen = false"
+    />
   </section>
 </template>
 
@@ -126,6 +170,18 @@ function isSelected(url: string) {
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .data-table {
   display: flex;
   flex-direction: column;
@@ -142,6 +198,15 @@ function isSelected(url: string) {
   min-height: 0;
   overflow: auto;
   scrollbar-gutter: stable;
+}
+
+.filtered-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .bookmarks-grid {
@@ -330,6 +395,29 @@ function isSelected(url: string) {
   border-radius: 10px;
 }
 
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--badge-text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.filter-badge {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(47, 111, 237, 0.12);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .bookmarks-grid {
     grid-template-columns: 52px minmax(160px, 0.9fr) minmax(200px, 1fr) 236px;
@@ -337,6 +425,15 @@ function isSelected(url: string) {
 }
 
 @media (max-width: 720px) {
+  .bookmarks-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-actions {
+    justify-content: space-between;
+  }
+
   .bookmarks-grid {
     grid-template-columns: 52px minmax(0, 1fr) 152px;
   }
