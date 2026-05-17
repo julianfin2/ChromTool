@@ -72,7 +72,9 @@ const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = 
           <span>全选</span>
         </label>
         <div class="toolbar-actions">
-          <span class="toolbar-count">显示 {{ extensions.length }} / {{ totalCount }}</span>
+          <span class="toolbar-count" :class="{ filtered: extensions.length !== totalCount }">
+            显示 {{ extensions.length }} / {{ totalCount }}
+          </span>
           <button class="filter-button" type="button" @click="filterOpen = true">
             过滤
             <span v-if="activeFilterCount" class="filter-badge">{{ activeFilterCount }}</span>
@@ -181,9 +183,17 @@ const extensionFilterFields: { value: ExtensionFilterField; label: string }[] = 
 }
 
 .toolbar-count {
+  padding: 3px 7px;
+  border-radius: 9px;
   color: var(--muted);
   font-size: 0.82rem;
   white-space: nowrap;
+}
+
+.toolbar-count.filtered {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b42318;
+  font-weight: 700;
 }
 
 .toolbar-checkbox {
