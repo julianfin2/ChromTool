@@ -15,7 +15,10 @@ use crate::{
         RemoveExtensionsInput, RemoveExtensionsResponse, ScanResponse,
     },
     scanner,
-    utils::decode_base64_literal,
+    utils::{
+        decode_base64_literal, ensure_contained_tree, resolve_profile_path,
+        validate_path_component, write_atomic_file,
+    },
 };
 use serde_json::Value;
 use tauri::{async_runtime, AppHandle};
@@ -77,7 +80,7 @@ pub fn open_browser_profile(
     let config = config_store::find_browser_config(&app, &browser_id)?;
     let executable_path = PathBuf::from(&config.executable_path);
     let user_data_dir = PathBuf::from(&config.user_data_path);
-    let profile_directory = user_data_dir.join(&profile_id);
+    let profile_directory = resolve_profile_path(&user_data_dir, &profile_id)?;
 
     if !user_data_dir.is_dir() {
         return Err(format!(
@@ -113,7 +116,11 @@ pub fn cleanup_history_files(
 
     let mut results = Vec::new();
     for profile_id in input.profile_ids {
-        let profile_path = user_data_dir.join(&profile_id);
+        let profile_path = resolve_profile_path(&user_data_dir, &profile_id)?;
+        validate_mutation_paths(
+            &profile_path,
+            cleanup_file_names().into_iter().chain(["Sessions".into()]),
+        )?;
         let result = cleanup_profile_history_files(&profile_path, &profile_id);
         results.push(result);
     }
@@ -157,9 +164,19 @@ fn remove_extensions_blocking(
 
     let mut results = Vec::new();
     for removal in input.removals {
+        validate_path_component(&removal.extension_id)?;
         for profile_id in removal.profile_ids {
+            let profile_path = resolve_profile_path(&user_data_dir, &profile_id)?;
+            validate_mutation_paths(
+                &profile_path,
+                [
+                    "Preferences".into(),
+                    "Secure Preferences".into(),
+                    format!("Extensions/{}", removal.extension_id),
+                ],
+            )?;
             results.push(remove_extension_from_profile(
-                &user_data_dir.join(&profile_id),
+                &profile_path,
                 &removal.extension_id,
                 &profile_id,
             ));
@@ -185,14 +202,34 @@ fn remove_bookmarks_blocking(
 
     let mut results = Vec::new();
     for (profile_id, urls) in group_bookmark_removals_by_profile(input.removals) {
+        let profile_path = resolve_profile_path(&user_data_dir, &profile_id)?;
+        validate_mutation_paths(
+            &profile_path,
+            bookmark_file_names()
+                .into_iter()
+                .chain(bookmark_backup_names()),
+        )?;
         results.extend(remove_bookmarks_from_profile(
-            &user_data_dir.join(&profile_id),
+            &profile_path,
             &profile_id,
             &urls,
         ));
     }
 
     Ok(RemoveBookmarksResponse { results })
+}
+
+fn validate_mutation_paths(
+    profile: &Path,
+    names: impl IntoIterator<Item = String>,
+) -> Result<(), String> {
+    for name in names {
+        ensure_contained_tree(profile, &profile.join(&name))?;
+        for suffix in ["-journal", "-wal", "-shm"] {
+            ensure_contained_tree(profile, &profile.join(format!("{name}{suffix}")))?;
+        }
+    }
+    Ok(())
 }
 
 fn group_bookmark_removals_by_profile(
@@ -416,13 +453,7 @@ fn remove_bookmarks_from_profile(
     let removed_backup = match remove_bookmark_backups(profile_path) {
         Ok(value) => value,
         Err(error) => {
-            return bookmark_error_results(
-                urls,
-                profile_id,
-                removed_files,
-                skipped_files,
-                error,
-            );
+            return bookmark_error_results(urls, profile_id, removed_files, skipped_files, error);
         }
     };
     if removed_backup {
@@ -447,13 +478,7 @@ fn remove_bookmarks_from_profile(
     let mut document = match read_json_document(&bookmarks_path) {
         Ok(document) => document,
         Err(error) => {
-            return bookmark_error_results(
-                urls,
-                profile_id,
-                removed_files,
-                skipped_files,
-                error,
-            );
+            return bookmark_error_results(urls, profile_id, removed_files, skipped_files, error);
         }
     };
 
@@ -468,13 +493,7 @@ fn remove_bookmarks_from_profile(
 
     if checksum_removed || removed_any {
         if let Err(error) = write_json_document(&bookmarks_path, &document) {
-            return bookmark_error_results(
-                urls,
-                profile_id,
-                removed_files,
-                skipped_files,
-                error,
-            );
+            return bookmark_error_results(urls, profile_id, removed_files, skipped_files, error);
         }
         removed_files.push(decoded_literal("Qm9va21hcmtz"));
     } else {
@@ -599,7 +618,8 @@ fn read_json_document(path: &Path) -> Result<Value, String> {
 fn write_json_document(path: &Path, document: &Value) -> Result<(), String> {
     let content = serde_json::to_string_pretty(document)
         .map_err(|error| format!("Failed to serialize {}: {error}", path.display()))?;
-    fs::write(path, content).map_err(|error| format!("Failed to write {}: {error}", path.display()))
+    write_atomic_file(path, content.as_bytes())
+        .map_err(|error| format!("Failed to write {}: {error}", path.display()))
 }
 
 fn remove_object_key(document: &mut Value, object_path: &[&str], key: &str) -> bool {

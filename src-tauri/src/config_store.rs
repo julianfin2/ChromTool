@@ -12,7 +12,7 @@ use crate::{
         BrowserConfigEntry, BrowserConfigListResponse, BrowserConfigSource,
         CreateCustomBrowserConfigInput, CustomBrowserConfigRecord, StoredBrowserConfigs,
     },
-    utils::platform_user_data_root_dir,
+    utils::{platform_user_data_root_dir, write_atomic_file},
 };
 
 const CONFIG_FILE_NAME: &str = "browser-configs.json";
@@ -182,7 +182,7 @@ fn save_stored_configs(app: &AppHandle, stored: &StoredBrowserConfigs) -> Result
 
     let content = serde_json::to_string_pretty(stored)
         .map_err(|error| format!("Failed to serialize browser configs: {error}"))?;
-    fs::write(&path, content).map_err(|error| {
+    write_atomic_file(&path, content.as_bytes()).map_err(|error| {
         format!(
             "Failed to write browser config file {}: {error}",
             path.display()

@@ -18,7 +18,7 @@ use crate::{
     },
     utils::{
         copy_sqlite_database_to_temp, decode_base64_literal, first_non_empty,
-        load_image_as_data_url, read_json_file,
+        load_image_as_data_url, read_json_file, resolve_profile_path, resolve_resource_path,
     },
 };
 
@@ -72,7 +72,9 @@ fn scan_browser(config: BrowserConfigEntry) -> Option<BrowserView> {
     let mut extensions = BTreeMap::<String, TempExtension>::new();
     let mut bookmarks = BTreeMap::<String, TempBookmark>::new();
     for profile_id in profile_ids {
-        let profile_path = root.join(&profile_id);
+        let Ok(profile_path) = resolve_profile_path(&root, &profile_id) else {
+            continue;
+        };
         if !profile_path.is_dir() {
             continue;
         }
@@ -154,7 +156,9 @@ fn scan_browser_password_sites(config: BrowserConfigEntry) -> Vec<PasswordSiteSu
     let mut password_sites = BTreeMap::<String, TempPasswordSite>::new();
 
     for profile_id in profile_ids {
-        let profile_path = root.join(&profile_id);
+        let Ok(profile_path) = resolve_profile_path(&root, &profile_id) else {
+            continue;
+        };
         if !profile_path.is_dir() {
             continue;
         }
@@ -323,7 +327,7 @@ fn resolve_profile_avatar(
         .filter(|value| !value.is_empty());
 
     if let Some(file_name) = picture_file {
-        let candidate = profile_path.join(file_name);
+        let candidate = resolve_resource_path(profile_path, file_name)?;
         if let Some(data_url) = load_image_as_data_url(&candidate) {
             return Some(data_url);
         }
@@ -428,20 +432,17 @@ fn resolve_extension_install_dir(
         .filter(|value| !value.is_empty())?;
 
     let normalized_path = raw_path.trim_start_matches('/');
-    let candidate = PathBuf::from(normalized_path);
+    let candidate = PathBuf::from(raw_path);
     let extensions_dir = decoded_literal("RXh0ZW5zaW9ucw==");
-    let (resolved, source) = if normalized_path.starts_with(extension_id) {
+    let (resolved, source) = if normalized_path.split(['/', '\\']).next() == Some(extension_id) {
         (
-            profile_path.join(extensions_dir).join(candidate),
+            resolve_resource_path(&profile_path.join(extensions_dir), normalized_path)?,
             ExtensionInstallSource::StoreRelative,
         )
     } else if candidate.is_absolute() {
         (candidate, ExtensionInstallSource::ExternalAbsolute)
     } else {
-        (
-            PathBuf::from(raw_path),
-            ExtensionInstallSource::ExternalAbsolute,
-        )
+        return None;
     };
 
     resolved.is_dir().then_some((resolved, source))
@@ -493,10 +494,11 @@ fn resolve_localized_manifest_value(
         .unwrap_or("en");
 
     for locale in [default_locale, "en"] {
-        let messages_path = version_path
-            .join("_locales")
-            .join(locale)
-            .join("messages.json");
+        let Some(messages_path) =
+            resolve_resource_path(version_path, &format!("_locales/{locale}/messages.json"))
+        else {
+            continue;
+        };
         let Some(messages) = read_json_file(&messages_path) else {
             continue;
         };
@@ -536,7 +538,7 @@ fn resolve_extension_icon(manifest: &Value, version_path: &Path) -> Option<Strin
     candidates.sort_by(|left, right| right.0.cmp(&left.0));
     candidates.into_iter().find_map(|(_, relative_path)| {
         let normalized_path = relative_path.trim_start_matches('/');
-        load_image_as_data_url(&version_path.join(normalized_path))
+        load_image_as_data_url(&resolve_resource_path(version_path, normalized_path)?)
     })
 }
 
@@ -800,4 +802,42 @@ fn build_password_sites_query() -> String {
     format!(
         "{select_kw} {origin_url}, {signon_realm} {from_kw} {logins} {where_kw} {blacklisted} = 0"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn extension_paths_use_exact_ids_and_reject_relative_external_paths() {
+        let fixture = tempfile::tempdir().unwrap();
+        let profile = fixture.path().join("Default");
+        std::fs::create_dir_all(profile.join("Extensions/test-id/1.0")).unwrap();
+        std::fs::create_dir_all(profile.join("Extensions/test-id-other/1.0")).unwrap();
+        let store =
+            resolve_extension_install_dir(&profile, "test-id", &json!({"path": "test-id/1.0"}))
+                .unwrap();
+        assert!(matches!(store.1, ExtensionInstallSource::StoreRelative));
+        assert!(resolve_extension_install_dir(
+            &profile,
+            "test-id",
+            &json!({"path": "test-id-other/1.0"})
+        )
+        .is_none());
+        assert!(
+            resolve_extension_install_dir(&profile, "test-id", &json!({"path": "../Default"}))
+                .is_none()
+        );
+        let external = resolve_extension_install_dir(
+            &profile,
+            "test-id",
+            &json!({"path": fixture.path().to_str().unwrap()}),
+        )
+        .unwrap();
+        assert!(matches!(
+            external.1,
+            ExtensionInstallSource::ExternalAbsolute
+        ));
+    }
 }
